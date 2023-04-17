@@ -261,8 +261,8 @@ export class EncryptStorage implements EncryptStorageInterface {
   ): Promise<string[]> {
     const { exact = false } = options;
 
-    const storageKeys = (await this.storage?.keys?.()) || [];
-
+    const storageKeys =
+      (await this.storage?.keys?.()) || Object.keys(this.storage || {}) || [];
     const filteredKeys = storageKeys.filter(key => {
       if (exact) {
         return _.isString(pattern) && key === this.#getKey(pattern);
