@@ -1,3 +1,7 @@
+import Bluebird from 'bluebird';
+// # TODO: should we use this to override the global promise? https://stackoverflow.com/a/43892870
+import _ from 'lodash';
+
 import { InvalidSecretKeyError } from './errors';
 import {
   Encryptation,
@@ -5,6 +9,7 @@ import {
   GetFromPatternOptions,
   EncryptStorageOptions,
   EncryptStorageInterface,
+  AsyncStorageInterface,
   RemoveFromPatternOptions,
 } from './types';
 import { getEncryptation, hashSHA256, hashMD5 } from './utils';
@@ -13,7 +18,7 @@ const secret = new WeakMap();
 export class EncryptStorage implements EncryptStorageInterface {
   readonly #encryptation: Encryptation;
 
-  public readonly storage: Storage | null;
+  public readonly storage: AsyncStorageInterface | null;
 
   readonly #prefix: string;
 
@@ -45,6 +50,10 @@ export class EncryptStorage implements EncryptStorageInterface {
       notifyHandler,
     } = options || {};
 
+    const {
+      storage = typeof window === 'object' ? window[storageType] : null,
+    } = options || {};
+
     secret.set(this, secretKey);
 
     this.#prefix = prefix;
@@ -52,15 +61,25 @@ export class EncryptStorage implements EncryptStorageInterface {
     this.#stateManagementUse = stateManagementUse;
     this.#doNotEncryptValues = doNotEncryptValues;
     this.#encryptation = getEncryptation(encAlgorithm, secret.get(this));
-    this.storage = typeof window === 'object' ? window[storageType] : null;
+
+    // # If there's no storage, we should just fail since there's no reason why
+    // # we'd have a storage-less module
+    this.storage = storage;
   }
 
   #getKey(key: string): string {
     return this.#prefix ? `${this.#prefix}:${key}` : key;
   }
 
-  public get length() {
-    const value = this.storage?.length || 0;
+  public async length(): Promise<number> {
+    const { storage } = this;
+    if (!storage) {
+      return 0;
+    }
+
+    const value = _.isFunction(storage.length)
+      ? await storage.length()
+      : storage.length;
 
     if (this.#notifyHandler) {
       this.#notifyHandler({
@@ -72,7 +91,12 @@ export class EncryptStorage implements EncryptStorageInterface {
     return value;
   }
 
-  public setItem(key: string, value: any, doNotEncrypt = false): void {
+  public async setItem(
+    key: string,
+    value: any,
+    doNotEncrypt = false,
+    options = {},
+  ): Promise<void> {
     const encryptValues = this.#doNotEncryptValues || doNotEncrypt;
     const storageKey = this.#getKey(key);
     const valueToString =
@@ -81,7 +105,7 @@ export class EncryptStorage implements EncryptStorageInterface {
       ? valueToString
       : this.#encryptation.encrypt(valueToString);
 
-    this.storage?.setItem(storageKey, encryptedValue);
+    await this.storage?.setItem(storageKey, encryptedValue, options);
 
     if (this.#notifyHandler && !this.#multiple) {
       this.#notifyHandler({
@@ -92,18 +116,18 @@ export class EncryptStorage implements EncryptStorageInterface {
     }
   }
 
-  public setMultipleItems(
-    param: [string, any][],
+  public async setMultipleItems(
+    param: [string, any, object?][],
     doNotEncrypt?: boolean,
-  ): void {
+  ): Promise<void> {
     this.#multiple = true;
-    param.forEach(([key, value]) => {
-      this.setItem(key, value, doNotEncrypt);
+    await Bluebird.mapSeries(param, ([key, value, options]) => {
+      return this.setItem(key, value, doNotEncrypt, options);
     });
 
     if (this.#notifyHandler) {
       const keys = param.map(([key]) => key);
-      const values = param.map(([_, value]) =>
+      const values = param.map(([__, value]) =>
         typeof value === 'object' ? JSON.stringify(value) : String(value),
       );
       this.#notifyHandler({
@@ -116,10 +140,13 @@ export class EncryptStorage implements EncryptStorageInterface {
     }
   }
 
-  public getItem<T = any>(key: string, doNotDecrypt = false): T | undefined {
+  public async getItem<T = any>(
+    key: string,
+    doNotDecrypt = false,
+  ): Promise<T | undefined> {
     const decryptValues = this.#doNotEncryptValues || doNotDecrypt;
     const storageKey = this.#getKey(key);
-    const item = this.storage?.getItem(storageKey);
+    const item = await this.storage?.getItem(storageKey);
 
     if (item) {
       const decryptedValue = decryptValues
@@ -172,16 +199,20 @@ export class EncryptStorage implements EncryptStorageInterface {
     return undefined;
   }
 
-  public getMultipleItems(
+  public async getMultipleItems(
     keys: string[],
     doNotDecrypt?: boolean,
-  ): Record<string, any> {
+  ): Promise<Record<string, any>> {
     this.#multiple = true;
-    const result = keys.reduce((accumulator: Record<string, any>, key) => {
-      accumulator[key] = this.getItem(key, doNotDecrypt);
+    const result = await Bluebird.reduce(
+      keys,
+      async (accumulator: Record<string, any>, key) => {
+        accumulator[key] = await this.getItem(key, doNotDecrypt);
 
-      return accumulator;
-    }, {});
+        return accumulator;
+      },
+      {},
+    );
 
     if (this.#notifyHandler) {
       this.#notifyHandler({
@@ -196,9 +227,9 @@ export class EncryptStorage implements EncryptStorageInterface {
     return result;
   }
 
-  public removeItem(key: string): void {
+  public async removeItem(key: string): Promise<void> {
     const storageKey = this.#getKey(key);
-    this.storage?.removeItem(storageKey);
+    await this.storage?.removeItem(storageKey);
 
     if (this.#notifyHandler && !this.#multiple) {
       this.#notifyHandler({
@@ -208,10 +239,10 @@ export class EncryptStorage implements EncryptStorageInterface {
     }
   }
 
-  public removeMultipleItems(keys: string[]): void {
+  public async removeMultipleItems(keys: string[]): Promise<void> {
     this.#multiple = true;
-    keys.forEach(key => {
-      this.removeItem(key);
+    await Bluebird.mapSeries(keys, key => {
+      return this.removeItem(key);
     });
 
     if (this.#notifyHandler) {
@@ -224,102 +255,77 @@ export class EncryptStorage implements EncryptStorageInterface {
     this.#multiple = false;
   }
 
-  public removeItemFromPattern(
-    pattern: string,
+  public async keysFromPattern(
+    pattern: string | RegExp,
     options: RemoveFromPatternOptions = {} as RemoveFromPatternOptions,
-  ): void {
+  ): Promise<string[]> {
     const { exact = false } = options;
-    const storageKeys = Object.keys(this.storage || {});
+
+    const storageKeys = (await this.storage?.keys?.()) || [];
+
     const filteredKeys = storageKeys.filter(key => {
       if (exact) {
-        return key === this.#getKey(pattern);
+        return _.isString(pattern) && key === this.#getKey(pattern);
       }
 
-      if (this.#prefix) {
-        return key.includes(pattern) && key.includes(this.#prefix);
-      }
+      const prefixMatched =
+        (this.#prefix && key.includes(this.#prefix)) || true;
 
-      return key.includes(pattern);
-    });
-
-    if (this.#notifyHandler) {
-      const keys = filteredKeys.map(key =>
-        this.#prefix ? key.split(`${this.#prefix}:`)[1] : key,
+      return (
+        (_.isRegExp(pattern) ? key.match(pattern) : key.includes(pattern)) &&
+        prefixMatched
       );
-      this.#notifyHandler({
-        type: 'remove',
-        key: keys,
-      });
-    }
-
-    filteredKeys.forEach(key => {
-      /* istanbul ignore next */
-      this.storage?.removeItem(key);
     });
+
+    const keysStrippedOfPrefix = filteredKeys.map(key => {
+      const formattedKey = this.#prefix
+        ? key.replace(`${this.#prefix}:`, '')
+        : key;
+
+      return formattedKey;
+    });
+
+    return keysStrippedOfPrefix;
   }
 
-  public getItemFromPattern(
+  public async getItemFromPattern(
     pattern: string,
     options: GetFromPatternOptions = {} as GetFromPatternOptions,
-  ): Record<string, any> | undefined {
-    const { multiple = true, exact = false, doNotDecrypt = false } = options;
+  ): Promise<Record<string, any> | undefined> {
+    const { multiple = true, doNotDecrypt = false } = options;
     const decryptValues = this.#doNotEncryptValues || doNotDecrypt;
-    const keys = Object.keys(this.storage || {}).filter(key => {
-      if (exact) {
-        return key === this.#getKey(pattern);
-      }
 
-      if (this.#prefix) {
-        return key.includes(pattern) && key.includes(this.#prefix);
-      }
+    const filteredKeys = await this.keysFromPattern(pattern, options);
 
-      return key.includes(pattern);
-    });
+    // # NOTE: TODO: we can probably use node-persist's valuesWithKeyMatch()
+    // # instead of processing it here. However, we would need to decrypt each value
 
-    if (!keys.length) {
+    if (!filteredKeys.length) {
       return undefined;
     }
 
     if (!multiple) {
-      const [key] = keys;
-
-      const formattedKey = this.#prefix
-        ? key.replace(`${this.#prefix}:`, '')
-        : key;
-
-      if (this.#notifyHandler) {
-        this.#notifyHandler({
-          type: 'remove',
-          key: formattedKey,
-        });
-      }
-
-      return this.getItem(formattedKey, decryptValues);
+      return this.getItem(filteredKeys[0], decryptValues);
     }
 
-    const value = keys.reduce((accumulator: Record<string, any>, key) => {
-      const formattedKey = this.#prefix
-        ? key.replace(`${this.#prefix}:`, '')
-        : key;
-
-      accumulator[formattedKey] = this.getItem(formattedKey);
-
-      return accumulator;
-    }, {});
-
-    if (this.#notifyHandler) {
-      this.#notifyHandler({
-        type: 'get',
-        key: keys,
-        value,
-      });
-    }
-
-    return value;
+    return this.getMultipleItems(filteredKeys, decryptValues);
   }
 
-  public clear(): void {
-    this.storage?.clear();
+  public async removeItemFromPattern(
+    pattern: string,
+    options: RemoveFromPatternOptions = {} as RemoveFromPatternOptions,
+  ): Promise<void> {
+    const filteredKeys = await this.keysFromPattern(pattern, options);
+
+    if (filteredKeys.length === 1) {
+      return this.removeItem(filteredKeys[0]);
+    }
+
+    return this.removeMultipleItems(filteredKeys);
+  }
+
+  public async clear(): Promise<void> {
+    await this.storage?.clear();
 
     if (this.#notifyHandler) {
       this.#notifyHandler({
@@ -328,8 +334,11 @@ export class EncryptStorage implements EncryptStorageInterface {
     }
   }
 
-  public key(index: number): string | null {
-    const value = this.storage?.key(index) || null;
+  public async key(index: number): Promise<string | null> {
+    const value =
+      (await this.storage?.keys?.())?.[index] ||
+      this.storage?.key?.(index) ||
+      null;
 
     if (this.#notifyHandler) {
       this.#notifyHandler({

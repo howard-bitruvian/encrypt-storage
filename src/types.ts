@@ -27,6 +27,18 @@ export interface Encryptation {
   decrypt(value: string): string;
 }
 
+export interface AsyncStorageInterface {
+  setItem(key: string, value: any, options?: object): void;
+  getItem(key: string): any;
+  removeItem(key: string): any;
+  clear(): any;
+  key?(index: number): Promise<string> | string | null;
+  keys?(): Promise<string[]> | string[];
+  // keys? :() => Promise<string[]> | string[];
+  length: number | (() => Promise<number>);
+  // # This interface is only for async storage interface
+}
+
 export interface EncryptStorageOptions {
   prefix?: string;
   stateManagementUse?: boolean;
@@ -34,6 +46,7 @@ export interface EncryptStorageOptions {
   encAlgorithm?: EncAlgorithm;
   doNotEncryptValues?: boolean;
   notifyHandler?: NotifyHandler;
+  storage?: Storage | AsyncStorageInterface;
 }
 
 export interface RemoveFromPatternOptions {
@@ -45,7 +58,8 @@ export interface GetFromPatternOptions extends RemoveFromPatternOptions {
   doNotDecrypt?: boolean;
 }
 
-export interface EncryptStorageInterface extends Storage {
+export interface EncryptStorageInterface {
+  // #  extends Storage //# NOTE: cannot extend typescript Storage because we want to define a length() method, not a getter
   /**
    * `setItem` - Is the function to be set `safeItem` in `selected storage`
    * @param {string} key - Is the key of `data` in `selected storage`.
@@ -55,7 +69,7 @@ export interface EncryptStorageInterface extends Storage {
    * 		setItem('any_key', {key: 'value', another_key: 2})
    * 		setItem('any_key', 'any value')
    */
-  setItem(key: string, value: any, doNotEncrypt?: boolean): void;
+  setItem(key: string, value: any, doNotEncrypt?: boolean): Promise<void>;
 
   /**
    * `setMultipeItems` - Is the function to be set `safeItem` in `selected storage`
@@ -66,7 +80,10 @@ export interface EncryptStorageInterface extends Storage {
    * 		setItem(['any_key', {key: 'value', another_key: 2}])
    * 		setItem(['any_key', 'any value'])
    */
-  setMultipleItems(param: [string, any][], doNotEncrypt?: boolean): void;
+  setMultipleItems(
+    param: [string, any][],
+    doNotEncrypt?: boolean,
+  ): Promise<void>;
 
   /**
    * `hash` - Is the function to be `hash` value width SHA256 encryptation
@@ -95,7 +112,10 @@ export interface EncryptStorageInterface extends Storage {
    * 		getItem('any_key') -> `{key: 'value', another_key: 2}`
    * 		getItem('any_key') -> `'any value'`
    */
-  getItem(key: string, doNotDecrypt?: boolean): string | any | undefined;
+  getItem(
+    key: string,
+    doNotDecrypt?: boolean,
+  ): Promise<string | any | undefined>;
 
   /**
    * `getMulpleItems` - Is the function to be get `safeItems` in `selected storage`
@@ -106,7 +126,10 @@ export interface EncryptStorageInterface extends Storage {
    * 		getMultipleItems(['any_key']) -> `{any_key: {key: 'value', another_key: 2}}`
    * 		getMultipleItems(['any_key']) -> `{any_key: 'any value'}`
    */
-  getMultipleItems(keys: string[], doNotDecrypt?: boolean): Record<string, any>;
+  getMultipleItems(
+    keys: string[],
+    doNotDecrypt?: boolean,
+  ): Promise<Record<string, any>>;
 
   /**
    * `removeItem` - Is the function to be remove `safeItem` in `selected storage`
@@ -116,7 +139,7 @@ export interface EncryptStorageInterface extends Storage {
    * @usage
    * 		removeItem('any_key')
    */
-  removeItem(key: string): void;
+  removeItem(key: string): Promise<void>;
 
   /**
    * `removeMultipleItems` - Is the function to be remove `safeItems` in `selected storage`
@@ -126,7 +149,22 @@ export interface EncryptStorageInterface extends Storage {
    * @usage
    * 		removeMultipleItems(['any_key_1'm 'any_key_2'])
    */
-  removeMultipleItems(keys: string[]): void;
+  removeMultipleItems(keys: string[]): Promise<void>;
+
+  /**
+   * `keysFromPattern` - returns matching keys based on pattern
+   * @param {string|RegExp} pattern - string match or RegExp match.
+   * @return {string[]}
+   * Returns `string[]`.
+   * @usage
+   *        itemKey = '12345678:user'
+   *        another itemKey = '12345678:item'
+   * 		keysFromPattern('12345678') -> ['12345678:user', '12345678:item']
+   */
+  keysFromPattern(
+    pattern: string | RegExp,
+    options?: RemoveFromPatternOptions,
+  ): Promise<string[]>;
 
   /**
    * `getItemFromPattern` - Is the function to be get `safeItem` in `selected storage` from `pattern` based
@@ -134,14 +172,14 @@ export interface EncryptStorageInterface extends Storage {
    * @return {any | Record<string, any> | undefined}
    * Returns `void`.
    * @usage
-   *    // itemKey = '12345678:user'
-   *    // another itemKey = '12345678:item'
+   *        itemKey = '12345678:user'
+   *        another itemKey = '12345678:item'
    * 		getItemFromPattern('12345678') -> {'12345678:user': 'value', '12345678:item': 'otherValue'}
    */
   getItemFromPattern(
     pattern: string,
     options?: GetFromPatternOptions,
-  ): Record<string, any> | any | undefined;
+  ): Promise<Record<string, any> | any | undefined>;
 
   /**
    * `removeItemFromPattern` - Is the function to be remove `safeItem` in `selected storage` from `pattern` based
@@ -149,25 +187,25 @@ export interface EncryptStorageInterface extends Storage {
    * @return {void}
    * Returns `void`.
    * @usage
-   *    // itemKey = '12345678:user'
-   *    // another itemKey = '12345678:item'
+   *        itemKey = '12345678:user'
+   *        another itemKey = '12345678:item'
    * 		removeItem('12345678') -> item removed from `selected storage`
    */
   removeItemFromPattern(
     pattern: string,
     options?: RemoveFromPatternOptions,
-  ): void;
+  ): Promise<void>;
 
   /**
    * `clear` - Clear all selected storage
    */
-  clear(): void;
+  clear(): Promise<void>;
 
   /**
    * `key` - Return a `key` in selected storage index or `null`
    * @param {number} index - Index of `key` in `selected storage`
    */
-  key(index: number): string | null;
+  key(index: number): Promise<string | null>;
 
   /**
    *
