@@ -4,12 +4,12 @@ import { EncryptStorage } from './encrypt-storage';
 export const AsyncEncryptStorage = EncryptStorage;
 
 /* istanbul ignore next */
-if (window) {
+if (typeof window !== 'undefined') {
   /* istanbul ignore next */
   (window as any).AsyncEncryptStorage = AsyncEncryptStorage;
 }
 /* istanbul ignore next */
-if (window && window?.globalThis) {
+if (typeof window !== 'undefined' && window?.globalThis) {
   /* istanbul ignore next */
   (window?.globalThis as any).AsyncEncryptStorage = AsyncEncryptStorage;
 }
