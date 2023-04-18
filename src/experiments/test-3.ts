@@ -50,48 +50,48 @@ export const test3 = () =>
       jest.clearAllMocks();
     });
 
-    it('should enshure localStorage not been called', () => {
+    it('should enshure localStorage not been called', async () => {
       const safeStorage = makeSut();
       const key = faker.random.word();
 
       windowSpy?.mockImplementation(() => undefined);
-      safeStorage.setItem(key, faker.random.word());
+      await safeStorage.setItem(key, faker.random.word());
 
       expect(localStorage?.setItem).toHaveBeenCalledTimes(0);
     });
 
-    it('should enshure sessionStorage not been called', () => {
+    it('should enshure sessionStorage not been called', async () => {
       windowSpy?.mockImplementation(() => undefined);
       const safeStorage = makeSut({ storageType: 'sessionStorage' });
       const key = faker.random.word();
 
       windowSpy?.mockImplementation(() => undefined);
-      safeStorage.setItem(key, faker.random.word());
+      await safeStorage.setItem(key, faker.random.word());
 
       expect(sessionStorage?.setItem).toHaveBeenCalledTimes(0);
     });
 
-    it('should calls localStorage.getItem not been called', () => {
+    it('should calls localStorage.getItem not been called', async () => {
       const safeStorage = makeSut();
       const key = faker.random.word();
 
       windowSpy?.mockImplementation(() => undefined);
-      safeStorage.getItem(key);
+      await safeStorage.getItem(key);
 
       expect(localStorage?.getItem).toHaveBeenCalledTimes(0);
     });
 
-    it('should calls localStorage.removeItem not been called', () => {
+    it('should calls localStorage.removeItem not been called', async () => {
       const safeStorage = makeSut();
       const key = faker.random.word();
 
       windowSpy?.mockImplementation(() => undefined);
-      safeStorage.removeItem(key);
+      await safeStorage.removeItem(key);
 
       expect(localStorage?.removeItem).toHaveBeenCalledTimes(0);
     });
 
-    it('should calls localStorage.getItem not been called when safeStorage.getItemFromPattern is called', () => {
+    it('should calls localStorage.getItem not been called when safeStorage.getItemFromPattern is called', async () => {
       const safeStorage = makeSut();
       const pattern = faker.random.alphaNumeric(8);
       const userKey = `${pattern}:user`;
@@ -103,73 +103,73 @@ export const test3 = () =>
       };
 
       windowSpy?.mockImplementation(() => undefined);
-      safeStorage.setItem(userKey, mockedValue[userKey]);
-      safeStorage.setItem(itemKey, mockedValue[itemKey]);
+      await safeStorage.setItem(userKey, mockedValue[userKey]);
+      await safeStorage.setItem(itemKey, mockedValue[itemKey]);
 
-      safeStorage.getItemFromPattern(pattern);
+      await safeStorage.getItemFromPattern(pattern);
 
       expect(localStorage?.getItem).toHaveBeenCalledTimes(0);
     });
 
-    it('should calls localStorage.length not been called', () => {
+    it('should calls localStorage.length not been called', async () => {
       windowSpy?.mockImplementation(() => undefined);
       const safeStorage = makeSut();
       const key1 = faker.random.word();
       const key2 = faker.random.word();
       const anyValue = faker.random.word();
 
-      safeStorage.setItem(key1, anyValue);
-      safeStorage.setItem(key2, anyValue);
-      let safeStorageLength = safeStorage.length;
+      await safeStorage.setItem(key1, anyValue);
+      await safeStorage.setItem(key2, anyValue);
+      let safeStorageLength = await safeStorage.length();
 
-      safeStorage.clear();
+      await safeStorage.clear();
 
-      safeStorageLength = safeStorage.length;
+      safeStorageLength = await safeStorage.length();
 
       expect(window?.localStorage?.length).toBeUndefined();
       expect(safeStorageLength).toBe(0);
     });
 
-    it('should calls localStorage.removeItem not been called when safeStorage.removeItemFromPattern is called', () => {
+    it('should calls localStorage.removeItem not been called when safeStorage.removeItemFromPattern is called', async () => {
       windowSpy?.mockImplementation(() => undefined);
       const safeStorage = makeSut();
       const pattern = faker.random.alphaNumeric(8);
       const userKey = `${pattern}:user`;
       const itemKey = `${pattern}:item`;
 
-      safeStorage.setItem(userKey, { id: 123 });
-      safeStorage.setItem(itemKey, { id: 456 });
+      await safeStorage.setItem(userKey, { id: 123 });
+      await safeStorage.setItem(itemKey, { id: 456 });
 
-      safeStorage.removeItemFromPattern(pattern);
+      await safeStorage.removeItemFromPattern(pattern);
 
       expect(localStorage?.removeItem).toHaveBeenCalledTimes(0);
     });
 
-    it('should calls localStorage.removeItem is undefined whensafeStorage.removeItemFromPattern is called', () => {
+    it('should calls localStorage.removeItem is undefined whensafeStorage.removeItemFromPattern is called', async () => {
       windowSpy?.mockImplementation(() => undefined);
       const safeStorage = makeSut();
       const pattern = faker.random.alphaNumeric(8);
       const userKey = `${pattern}:user`;
       const itemKey = `${pattern}:item`;
 
-      safeStorage.setItem(userKey, { id: 123 });
-      safeStorage.setItem(itemKey, { id: 456 });
+      await safeStorage.setItem(userKey, { id: 123 });
+      await safeStorage.setItem(itemKey, { id: 456 });
 
-      safeStorage.removeItemFromPattern(pattern);
+      await safeStorage.removeItemFromPattern(pattern);
 
       expect(window?.localStorage?.getItem).toBeUndefined();
     });
 
-    it('should localStorage.key is undefined', () => {
+    it('should localStorage.key is undefined', async () => {
       const safeStorage = makeSut();
       const key1 = faker.random.word();
       const key2 = faker.random.word();
 
-      safeStorage.setItem(key1, 'any_value');
-      safeStorage.setItem(key2, 'any_value');
+      await safeStorage.setItem(key1, 'any_value');
+      await safeStorage.setItem(key2, 'any_value');
 
-      expect(safeStorage.key(0)).toBe(null);
-      expect(safeStorage.key(1)).toBe(null);
-      expect(safeStorage.key(2)).toBeFalsy();
+      expect(await safeStorage.key(0)).toBe(null);
+      expect(await safeStorage.key(1)).toBe(null);
+      expect(await safeStorage.key(2)).toBeFalsy();
     });
   });

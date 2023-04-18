@@ -3,7 +3,7 @@
 import 'jest-localstorage-mock';
 import faker from 'faker';
 
-import { AsyncEncryptStorage } from '..';
+import { EncryptStorage } from '..';
 import { EncryptStorageOptions } from '../types';
 
 import { InvalidSecretKeyError } from '../errors';
@@ -15,7 +15,7 @@ interface makeSutParams extends EncryptStorageOptions {
 
 const makeSut = (
   params: makeSutParams = {} as makeSutParams,
-): AsyncEncryptStorage => {
+): EncryptStorage => {
   const {
     prefix,
     storageType,
@@ -32,11 +32,11 @@ const makeSut = (
         stateManagementUse,
         encAlgorithm,
       };
-  return new AsyncEncryptStorage(secretKey, options);
+  return new EncryptStorage(secretKey, options);
 };
 
 export const test2 = () =>
-  describe('AsyncEncryptStorage', () => {
+  describe('async storage for EncryptStorage', () => {
     beforeEach(() => {
       localStorage.clear();
     });
@@ -178,14 +178,14 @@ export const test2 = () =>
 
       await safeStorage.setItem(key1, anyValue);
       await safeStorage.setItem(key2, anyValue);
-      let safeStorageLength = await safeStorage.length;
+      let safeStorageLength = await safeStorage.length();
 
       expect(localStorage.length).toBe(2);
       expect(safeStorageLength).toBe(2);
 
       await safeStorage.clear();
 
-      safeStorageLength = await safeStorage.length;
+      safeStorageLength = await safeStorage.length();
 
       expect(localStorage.length).toBe(0);
       expect(safeStorageLength).toBe(0);
