@@ -1,8 +1,6 @@
 node_modules
 .yarn
 .*
-**/tsconfig.json
-**/webpack.config.js
 **/.editorconfig
 **/.eslintignore
 **/.eslint.json
@@ -23,4 +21,6 @@ CODE_OF_CONDUCT.md
 docs
 coverage
 __tests__
-src
+#src ## include src cause we're not publishing this and we need access to src to compile
+#**/tsconfig.json
+#**/webpack.config.js

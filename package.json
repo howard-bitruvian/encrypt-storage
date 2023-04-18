@@ -4,19 +4,20 @@
   "description": "Wrapper for encrypted localStorage and sessionStorage in browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "homepage": "https://github.com/michelonsouza/encrypt-storage#readme",
+  "homepage": "https://github.com/howard-bitruvian/encrypt-storage#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/michelonsouza/encrypt-storage.git"
+    "url": "https://github.com/howard-bitruvian/encrypt-storage.git"
   },
   "funding": {
     "type": "individual",
-    "url": "https://github.com/sponsors/michelonsouza"
+    "url": "https://github.com/sponsors/howard-bitruvian"
   },
   "scripts": {
     "clean": "shx rm -rf _bundles lib lib-esm",
     "build": "tsc --declaration",
     "build:minified": "webpack",
+    "postinstall": "npm run build",
     "lint": "eslint 'src/**'",
     "test": "jest --passWithNoTests --no-cache --runInBand",
     "test:watch": "yarn test -- --watch",
@@ -72,9 +73,9 @@
     "state management persist"
   ],
   "author": {
-    "email": "michelon.souza@gmail.com",
-    "name": "Michelon Souza",
-    "url": "https://github.com/michelonsouza"
+    "email": "howard@bitruvian.com",
+    "name": "Howard Y",
+    "url": "https://github.com/howard-bitruvian"
   },
   "license": "MIT",
   "devDependencies": {
