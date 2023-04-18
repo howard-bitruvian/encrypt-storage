@@ -81,12 +81,8 @@
   "devDependencies": {
     "@commitlint/cli": "^17.5.1",
     "@commitlint/config-conventional": "^17.4.4",
-    "@types/bluebird": "^3.5.38",
-    "@types/crypto-js": "^4.1.1",
     "@types/faker": "^5.5.9",
     "@types/jest": "^29.5.0",
-    "@types/lodash": "^4.14.194",
-    "@types/node": "^18.15.11",
     "@typescript-eslint/eslint-plugin": "^5.57.1",
     "@typescript-eslint/parser": "^5.57.1",
     "assert": "^2.0.0",
@@ -107,7 +103,17 @@
     "jest-environment-jsdom": "^29.5.0",
     "jest-environment-node": "^29.5.0",
     "jest-localstorage-mock": "^2.4.26",
-    "lint-staged": "^13.2.0",
+    "lint-staged": "^13.2.0"
+  },
+  "dependencies": {
+    "@types/bluebird": "^3.5.38",
+    "@types/crypto-js": "^4.1.1",
+    "@types/lodash": "^4.14.194",
+    "@types/node": "^18.15.11",
+    "bluebird": "^3.7.2",
+    "crypto-browserify": "^3.12.0",
+    "crypto-js": "^4.1.1",
+    "lodash": "^4.17.21",
     "node-polyfill-webpack-plugin": "^2.0.1",
     "os-browserify": "^0.3.0",
     "path-browserify": "^1.0.1",
@@ -122,11 +128,5 @@
     "url": "^0.11.0",
     "webpack": "^5.77.0",
     "webpack-cli": "^5.0.1"
-  },
-  "dependencies": {
-    "bluebird": "^3.7.2",
-    "crypto-browserify": "^3.12.0",
-    "crypto-js": "^4.1.1",
-    "lodash": "^4.17.21"
   }
 }
